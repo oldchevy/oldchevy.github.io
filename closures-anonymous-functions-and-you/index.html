@@ -1,0 +1,246 @@
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Understanding Closures with Anonymous Functions</title>
+    <meta name="description" content="">
+
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="shortcut icon" href="../favicon.ico">
+
+    <link rel="stylesheet" type="text/css" href="../assets/css/screen.css?v=8269f4dbc6">
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic%7COpen+Sans:700,400">
+    <link rel="stylesheet" type="text/css" href="../assets/css/prism.css">
+
+    <link rel="canonical" href="index.html">
+    <meta name="referrer" content="origin">
+    
+    <meta property="og:site_name" content="Bits of Bytes">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Understanding Closures with Anonymous Functions">
+    <meta property="og:description" content="Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what...">
+    <meta property="og:url" content="http://localhost:2368/closures-anonymous-functions-and-you/">
+    <meta property="article:published_time" content="2016-08-15T05:46:14.843Z">
+    <meta property="article:modified_time" content="2016-08-15T06:14:44.731Z">
+    
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Understanding Closures with Anonymous Functions">
+    <meta name="twitter:description" content="Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what...">
+    <meta name="twitter:url" content="http://localhost:2368/closures-anonymous-functions-and-you/">
+    
+    <script type="text/javascript" src="../assets/js/prism.js"></script>
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Article",
+    "publisher": "Bits of Bytes",
+    "author": {
+        "@type": "Person",
+        "name": "Nick Olszowy",
+        "url": "http://localhost:2368/author/nick",
+        "sameAs": null,
+        "description": null
+    },
+    "headline": "Understanding Closures with Anonymous Functions",
+    "url": "http://localhost:2368/closures-anonymous-functions-and-you/",
+    "datePublished": "2016-08-15T05:46:14.843Z",
+    "dateModified": "2016-08-15T06:14:44.731Z",
+    "description": "Closure is a pattern used in Javascript over and over again, so it&#x27;s an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don&#x27;t know what..."
+}
+    </script>
+
+    <meta name="generator" content="Ghost 0.7">
+    <link rel="alternate" type="application/rss+xml" title="Bits of Bytes" href="../rss/index.html">
+</head>
+<body class="post-template nav-closed">
+
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="index.html#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+            <li class="nav-home" role="presentation"><a href="../">Home</a></li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="../rss/index.rss">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        
+
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+            <a class="menu-button icon-menu" href="index.html#"><span class="word">Menu</span></a>
+    </nav>
+</header>
+
+<main class="content" role="main">
+    <article class="post">
+
+        <header class="post-header">
+            <h1 class="post-title">Understanding Closures with Anonymous Functions</h1>
+            <section class="post-meta">
+                <time class="post-date" datetime="2016-08-14">14 August 2016</time> 
+            </section>
+        </header>
+
+        <section class="post-content">
+            <p>Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous function accessing a closure variable can seem like black magic! Today I want to demystify the process and hopefully leave you with a solid understanding of making a closure with an anonymous function. First, a little context is necessary.</p>
+
+<p>A closure is when a function is declared within another function, and the inner function has access to the variables of the outer function, even when the outer function has already returned! Check out <a href="http://javascriptissexy.com/understand-javascript-closures-with-ease/">this article</a> for a more in-depth description. As an example, consider a scenario where we want to delay an action using <code>setTimout</code>. This timing function is provided by default in Javascript, and is stored in the global scope. With it we can pass a function to be invoked at a later time, and a time in milliseconds for the delay.</p>
+
+<p>Below is a simple race car object, which has properties that describe its motion. The code will be in some arbitrary scope which is not the global scope. We have a <code>goFast</code> function that increments the acceleration up, simulating the race car driver putting the pedal to the metal. We are going to use <code>setTimeout</code> to simulate the delay in real life from when you press a car's gas pedal down to when the car actually starts accelerating.</p>
+
+<pre><code class="language-javascript">var raceCar = {  
+    acceleration: 0,
+    velocity: 10,
+    position: 4
+};
+
+var goFast = function(car) {  
+    car.acceleration += 10;
+};
+
+//Will be invoked before being passed to setTimeout
+setTimeout(goFast(raceCar), 500 );
+
+//Will not have any args when invoked in setTimeout
+setTimeout(goFast, 500 );
+
+//Closure allows proper lookup of the arg we want to pass to goFast
+setTimeout(function() { goFast(raceCar); }, 500 );  
+</code></pre>
+
+<p>Like described in the comments above each call to setTimeout is different, and the closure pattern in the last call is a good way to achieve the desired effect, which was to call the acceleration function with the race car object provided to it. In this case, the anonymous function is the closure function and <code>goFast</code> and <code>raceCar</code> are the variables being closed over. <code>setTimeout</code> will invoke the function in the global scope, which does not have access to the scope we are looking at currently. How does the callback invoked in the global scope still have access to the closure variables?</p>
+
+<p>As a non-trivial example, here's a snippet of code I wrote recently that employs anonymous functions and closures to toggle a state on the event of a DOM element being clicked. The closure pattern lets the click listener attached to a "Canadian Dancer" instance access the <code>clicks</code> variable to know whether it needs to add or remove the dragging behavior. </p>
+
+<pre><code class="language-javascript">Canadian.prototype.mouseListener = function() {
+
+  var clicks = true;
+
+  $('body').on('click', '.dancer.canadian', function(event) {
+    if (clicks) {
+      $('body').on('mousemove', function(event) {
+        this.setPosition(event.pageY, event.pageX);
+      }.bind(this));
+      clicks = false;
+    } else {
+      $('body').off('mousemove');
+      clicks = true;
+    }
+
+  }.bind(this));
+};
+</code></pre>
+
+<p>We were making an interactive dance floor with several classes, and wanted our Canadian Dancers (think Terrence and Phillip) to have the ability to be clicked then dragged anywhere on the dance floor. Using this pattern, each instance of a Canadian has its own private <code>clicks</code> variable so each can behave independently. That's really useful!</p>
+
+<p>You might have noticed that we used jQuery to select DOM elements and add event listeners to them. When the event is triggered, jQuery will know to invoke all the callbacks associated with the event, and then invoke them. However, this all happens in the jQuery runtime environment! The pattern is the same as the <code>setTimeout</code> example, and the question again is how does this totally separate scope know about the private <code>clicks</code> variable for each Canadian? </p>
+
+<p>The answer lies in how the interpreter deals with anonymous functions and how execution contexts are built up in runtime.</p>
+
+<p>Firstly, an execution context is a separate but related thing from scope. Any given scope in your Javascript code can have several different execution contexts. Specifically, it has one for each time the function enclosing the scope was invoked. When Javascript code is run in real time, these execution contexts are built up and exist during the entire runtime of the code. When variable lookup happens in runtime, it begins in the current context and falls through down it's containing contexts all the way down to the global scope. These are the same rules as scope, but now lookup is confined to that specific function invocation. <a href="http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/">Here</a> is some more information on execution contexts.</p>
+
+<p>Back to our race car example. We're imagining that the code is contained within some scope that's not the global scope. Now in runtime, the Javascript interpreter has built up an execution context specific to the function invocation it is currently in. When <code>raceCar</code> and <code>goFast</code> are initialized they are stored in memory inside the execution context. Let's say to make our code clearer we decided to declare our callback that we are passing to <code>setTimeout</code> before calling <code>setTimeout</code>, and we slapped a name tag on it. </p>
+
+<pre><code class="language-javascript">var raceCar = {  
+    acceleration: 0,
+    velocity: 10,
+    position: 4
+};
+
+var goFast = function(car) {  
+    car.acceleration += 10;
+};
+
+//This new function instance is created in the current execution context
+var accelerateRacecar = function() { goFast(raceCar); };
+
+setTimeout(accelerateRacecar, 500);  
+</code></pre>
+
+<p>The new function, <code>accelerateRacecar</code> is stored within our current working execution context, and is given a name tag pointing towards its location in memory. Recall that functions are just objects with the special property of being invokable, and all objects in Javascript are pass-by-reference. This means that when <code>setTimeout</code> invokes the callback in the global scope, the name tag <code>accelerateRacecar</code> points the interpreter to its location in memory, then invokes the function. The function invocation will occur <em>in the execution context it was initially stored in</em>. Now when the variables inside the <code>accelerateRacecar</code> function are evaluated, lookup falls down one level to the correct execution context where they are defined! This is how a closure works. </p>
+
+<p>The final step of mental gymnastics we must now perform is understanding that when the Javascript finds an anonymous function expression, it still retains a unique label pointing towards its location in runtime memory. Even though we didn't give it a name, the interpreter must still be able to find it when it gets invoked! You can imagine that might look something like this:</p>
+
+<pre><code class="language-javascript">(anonymous function) = function() { goFast(raceCar); };
+
+setTimeout((anonymous function), 500 );  
+</code></pre>
+
+<p>This notation is similar to what is seen in a debugger call stack trace for an anonymous function. When the interpreter visits the anonymous function expression, it must instantiate a new function object, and store it in the current execution context. Then it passes along <em>a reference</em> of the anonymous function to <code>setTimeout</code>. Even though we have no way to access this function because we didn't give it a name tag, the interpreter still passes the reference along. And that's it! The anonymous function reference works the exact same way as if there was a name tag attached to it. I hope I've now demystified the mechanics of using an anonymous function as a closure. Below is a list of relevant resources, and please feel free to give me feedback!</p>
+
+<p><a href="http://javascriptissexy.com/understand-javascript-closures-with-ease/">Understand JavaScript Closures With Ease</a></p>
+
+<p><a href="http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/">What is the Execution Context &amp; Stack in JavaScript?</a></p>
+
+<p><a href="http://helephant.com/2008/08/23/javascript-anonymous-functions/">Javascript anonymous functions</a></p>
+        </section>
+
+        <footer class="post-footer">
+
+
+
+            <section class="author">
+                <h4><a href="../author/nick/">Nick Olszowy</a></h4>
+
+                    <p>Read <a href="../author/nick/">more posts</a> by this author.</p>
+                <div class="author-meta">
+                    
+                    
+                </div>
+            </section>
+
+
+            <section class="share">
+                <h4>Share this post</h4>
+                <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Understanding%20Closures%20with%20Anonymous%20Functions&amp;url=http://localhost:2368/closures-anonymous-functions-and-you/" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                    <span class="hidden">Twitter</span>
+                </a>
+                <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http://localhost:2368/closures-anonymous-functions-and-you/" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                    <span class="hidden">Facebook</span>
+                </a>
+                <a class="icon-google-plus" href="https://plus.google.com/share?url=http://localhost:2368/closures-anonymous-functions-and-you/" onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                    <span class="hidden">Google+</span>
+                </a>
+            </section>
+
+        </footer>
+
+    </article>
+</main>
+
+<aside class="read-next">
+    <a class="read-next-story prev no-cover" href="../hello-world/">
+        <section class="post">
+            <h2>Hello World</h2>
+            <p>Hi all, welcome to my blog! Through this blog I want to share useful information about coding that I've…</p>
+        </section>
+    </a>
+</aside>
+
+
+
+        <footer class="site-footer clearfix">
+            <section class="copyright"><a href="../">Bits of Bytes</a> © 2016</section>
+            <section class="poweredby">Proudly published with <a href="https://ghost.org">Ghost</a></section>
+        </footer>
+
+    </div>
+
+    
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="../assets/js/jquery.fitvids.js?v=8269f4dbc6"></script>
+    <script type="text/javascript" src="../assets/js/index.js?v=8269f4dbc6"></script>
+
+</body>

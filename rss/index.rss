@@ -1,3 +1,93 @@
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel><title>Bits of Bytes</title><description>Your daily dose of Javascript knowledge</description><link>http://localhost:2368/</link><generator>Ghost 0.7</generator><lastBuildDate>Mon, 08 Aug 2016 17:25:12 GMT</lastBuildDate><atom:link href="http://localhost:2368/rss/" rel="self" type="application/rss+xml"/><ttl>60</ttl><item><title>Hello World</title><description>&lt;p&gt;Hi all, welcome to my blog! Through this blog I want to share useful information about coding that I've found, interesting projects I've made, and general thoughts about life. Right now I'm learning the ins-and-outs of Javascript and its popular libraries like Node, Angular, and React. Javascript is a powerful&lt;/p&gt;</description><link>http://localhost:2368/hello-world/</link><guid isPermaLink="false">809923c6-9835-48d5-afd1-86ff42a93d37</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Mon, 08 Aug 2016 07:51:45 GMT</pubDate><content:encoded>&lt;p&gt;Hi all, welcome to my blog! Through this blog I want to share useful information about coding that I've found, interesting projects I've made, and general thoughts about life. Right now I'm learning the ins-and-outs of Javascript and its popular libraries like Node, Angular, and React. Javascript is a powerful and flexible language, but has some quirks that take some practice to master (0 == false). Have no fear! This blog can guide you through these unknown waters of bits and bytes, and you'll be slinging code in no time.&lt;/p&gt;
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel><title>Bits of Bytes</title><description>Your daily dose of Javascript knowledge</description><link>http://localhost:2368/</link><generator>Ghost 0.7</generator><lastBuildDate>Mon, 15 Aug 2016 06:15:14 GMT</lastBuildDate><atom:link href="http://localhost:2368/rss/" rel="self" type="application/rss+xml"/><ttl>60</ttl><item><title>Understanding Closures with Anonymous Functions</title><description>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous&lt;/p&gt;</description><link>http://localhost:2368/closures-anonymous-functions-and-you/</link><guid isPermaLink="false">af07cd75-191e-44b9-976c-cc91e98a0106</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Mon, 15 Aug 2016 05:46:14 GMT</pubDate><content:encoded>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous function accessing a closure variable can seem like black magic! Today I want to demystify the process and hopefully leave you with a solid understanding of making a closure with an anonymous function. First, a little context is necessary.&lt;/p&gt;
+
+&lt;p&gt;A closure is when a function is declared within another function, and the inner function has access to the variables of the outer function, even when the outer function has already returned! Check out &lt;a href="http://javascriptissexy.com/understand-javascript-closures-with-ease/"&gt;this article&lt;/a&gt; for a more in-depth description. As an example, consider a scenario where we want to delay an action using &lt;code&gt;setTimout&lt;/code&gt;. This timing function is provided by default in Javascript, and is stored in the global scope. With it we can pass a function to be invoked at a later time, and a time in milliseconds for the delay.&lt;/p&gt;
+
+&lt;p&gt;Below is a simple race car object, which has properties that describe its motion. The code will be in some arbitrary scope which is not the global scope. We have a &lt;code&gt;goFast&lt;/code&gt; function that increments the acceleration up, simulating the race car driver putting the pedal to the metal. We are going to use &lt;code&gt;setTimeout&lt;/code&gt; to simulate the delay in real life from when you press a car's gas pedal down to when the car actually starts accelerating.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;var raceCar = {  
+    acceleration: 0,
+    velocity: 10,
+    position: 4
+};
+
+var goFast = function(car) {  
+    car.acceleration += 10;
+};
+
+//Will be invoked before being passed to setTimeout
+setTimeout(goFast(raceCar), 500 );
+
+//Will not have any args when invoked in setTimeout
+setTimeout(goFast, 500 );
+
+//Closure allows proper lookup of the arg we want to pass to goFast
+setTimeout(function() { goFast(raceCar); }, 500 );  
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Like described in the comments above each call to setTimeout is different, and the closure pattern in the last call is a good way to achieve the desired effect, which was to call the acceleration function with the race car object provided to it. In this case, the anonymous function is the closure function and &lt;code&gt;goFast&lt;/code&gt; and &lt;code&gt;raceCar&lt;/code&gt; are the variables being closed over. &lt;code&gt;setTimeout&lt;/code&gt; will invoke the function in the global scope, which does not have access to the scope we are looking at currently. How does the callback invoked in the global scope still have access to the closure variables?&lt;/p&gt;
+
+&lt;p&gt;As a non-trivial example, here's a snippet of code I wrote recently that employs anonymous functions and closures to toggle a state on the event of a DOM element being clicked. The closure pattern lets the click listener attached to a "Canadian Dancer" instance access the &lt;code&gt;clicks&lt;/code&gt; variable to know whether it needs to add or remove the dragging behavior. &lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;Canadian.prototype.mouseListener = function() {
+
+  var clicks = true;
+
+  $('body').on('click', '.dancer.canadian', function(event) {
+    if (clicks) {
+      $('body').on('mousemove', function(event) {
+        this.setPosition(event.pageY, event.pageX);
+      }.bind(this));
+      clicks = false;
+    } else {
+      $('body').off('mousemove');
+      clicks = true;
+    }
+
+  }.bind(this));
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We were making an interactive dance floor with several classes, and wanted our Canadian Dancers (think Terrence and Phillip) to have the ability to be clicked then dragged anywhere on the dance floor. Using this pattern, each instance of a Canadian has its own private &lt;code&gt;clicks&lt;/code&gt; variable so each can behave independently. That's really useful!&lt;/p&gt;
+
+&lt;p&gt;You might have noticed that we used jQuery to select DOM elements and add event listeners to them. When the event is triggered, jQuery will know to invoke all the callbacks associated with the event, and then invoke them. However, this all happens in the jQuery runtime environment! The pattern is the same as the &lt;code&gt;setTimeout&lt;/code&gt; example, and the question again is how does this totally separate scope know about the private &lt;code&gt;clicks&lt;/code&gt; variable for each Canadian? &lt;/p&gt;
+
+&lt;p&gt;The answer lies in how the interpreter deals with anonymous functions and how execution contexts are built up in runtime.&lt;/p&gt;
+
+&lt;p&gt;Firstly, an execution context is a separate but related thing from scope. Any given scope in your Javascript code can have several different execution contexts. Specifically, it has one for each time the function enclosing the scope was invoked. When Javascript code is run in real time, these execution contexts are built up and exist during the entire runtime of the code. When variable lookup happens in runtime, it begins in the current context and falls through down it's containing contexts all the way down to the global scope. These are the same rules as scope, but now lookup is confined to that specific function invocation. &lt;a href="http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/"&gt;Here&lt;/a&gt; is some more information on execution contexts.&lt;/p&gt;
+
+&lt;p&gt;Back to our race car example. We're imagining that the code is contained within some scope that's not the global scope. Now in runtime, the Javascript interpreter has built up an execution context specific to the function invocation it is currently in. When &lt;code&gt;raceCar&lt;/code&gt; and &lt;code&gt;goFast&lt;/code&gt; are initialized they are stored in memory inside the execution context. Let's say to make our code clearer we decided to declare our callback that we are passing to &lt;code&gt;setTimeout&lt;/code&gt; before calling &lt;code&gt;setTimeout&lt;/code&gt;, and we slapped a name tag on it. &lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;var raceCar = {  
+    acceleration: 0,
+    velocity: 10,
+    position: 4
+};
+
+var goFast = function(car) {  
+    car.acceleration += 10;
+};
+
+//This new function instance is created in the current execution context
+var accelerateRacecar = function() { goFast(raceCar); };
+
+setTimeout(accelerateRacecar, 500);  
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The new function, &lt;code&gt;accelerateRacecar&lt;/code&gt; is stored within our current working execution context, and is given a name tag pointing towards its location in memory. Recall that functions are just objects with the special property of being invokable, and all objects in Javascript are pass-by-reference. This means that when &lt;code&gt;setTimeout&lt;/code&gt; invokes the callback in the global scope, the name tag &lt;code&gt;accelerateRacecar&lt;/code&gt; points the interpreter to its location in memory, then invokes the function. The function invocation will occur &lt;em&gt;in the execution context it was initially stored in&lt;/em&gt;. Now when the variables inside the &lt;code&gt;accelerateRacecar&lt;/code&gt; function are evaluated, lookup falls down one level to the correct execution context where they are defined! This is how a closure works. &lt;/p&gt;
+
+&lt;p&gt;The final step of mental gymnastics we must now perform is understanding that when the Javascript finds an anonymous function expression, it still retains a unique label pointing towards its location in runtime memory. Even though we didn't give it a name, the interpreter must still be able to find it when it gets invoked! You can imagine that might look something like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;(anonymous function) = function() { goFast(raceCar); };
+
+setTimeout((anonymous function), 500 );  
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This notation is similar to what is seen in a debugger call stack trace for an anonymous function. When the interpreter visits the anonymous function expression, it must instantiate a new function object, and store it in the current execution context. Then it passes along &lt;em&gt;a reference&lt;/em&gt; of the anonymous function to &lt;code&gt;setTimeout&lt;/code&gt;. Even though we have no way to access this function because we didn't give it a name tag, the interpreter still passes the reference along. And that's it! The anonymous function reference works the exact same way as if there was a name tag attached to it. I hope I've now demystified the mechanics of using an anonymous function as a closure. Below is a list of relevant resources, and please feel free to give me feedback!&lt;/p&gt;
+
+&lt;p&gt;&lt;a href="http://javascriptissexy.com/understand-javascript-closures-with-ease/"&gt;Understand JavaScript Closures With Ease&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href="http://davidshariff.com/blog/what-is-the-execution-context-in-javascript/"&gt;What is the Execution Context &amp;amp; Stack in JavaScript?&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href="http://helephant.com/2008/08/23/javascript-anonymous-functions/"&gt;Javascript anonymous functions&lt;/a&gt;&lt;/p&gt;</content:encoded></item><item><title>Hello World</title><description>&lt;p&gt;Hi all, welcome to my blog! Through this blog I want to share useful information about coding that I've found, interesting projects I've made, and general thoughts about life. Right now I'm learning the ins-and-outs of Javascript and its popular libraries like Node, Angular, and React. Javascript is a powerful&lt;/p&gt;</description><link>http://localhost:2368/hello-world/</link><guid isPermaLink="false">809923c6-9835-48d5-afd1-86ff42a93d37</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Mon, 08 Aug 2016 07:51:45 GMT</pubDate><content:encoded>&lt;p&gt;Hi all, welcome to my blog! Through this blog I want to share useful information about coding that I've found, interesting projects I've made, and general thoughts about life. Right now I'm learning the ins-and-outs of Javascript and its popular libraries like Node, Angular, and React. Javascript is a powerful and flexible language, but has some quirks that take some practice to master (0 == false). Have no fear! This blog can guide you through these unknown waters of bits and bytes, and you'll be slinging code in no time.&lt;/p&gt;
 
 &lt;p&gt;I'm from the Washington, DC area but currently living in the software engineering mecca of San Francisco. As I become more ingrained in the #techlife I hope to start blogging about cool ideas, promising  new technologies, and interesting startups too. Stay tuned for my first Javascript post!&lt;/p&gt;</content:encoded></item></channel></rss>
