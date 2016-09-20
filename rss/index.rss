@@ -1,4 +1,123 @@
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel><title>Bits of Bytes</title><description>Your daily dose of Javascript knowledge</description><link>http://localhost:2368/</link><generator>Ghost 0.7</generator><lastBuildDate>Mon, 15 Aug 2016 06:15:14 GMT</lastBuildDate><atom:link href="http://localhost:2368/rss/" rel="self" type="application/rss+xml"/><ttl>60</ttl><item><title>Understanding Closures with Anonymous Functions</title><description>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous&lt;/p&gt;</description><link>http://localhost:2368/closures-anonymous-functions-and-you/</link><guid isPermaLink="false">af07cd75-191e-44b9-976c-cc91e98a0106</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Mon, 15 Aug 2016 05:46:14 GMT</pubDate><content:encoded>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous function accessing a closure variable can seem like black magic! Today I want to demystify the process and hopefully leave you with a solid understanding of making a closure with an anonymous function. First, a little context is necessary.&lt;/p&gt;
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel><title>Bits of Bytes</title><description>Your daily dose of Javascript knowledge</description><link>http://localhost:2368/</link><generator>Ghost 0.7</generator><lastBuildDate>Tue, 20 Sep 2016 07:19:47 GMT</lastBuildDate><atom:link href="http://localhost:2368/rss/" rel="self" type="application/rss+xml"/><ttl>60</ttl><item><title>Binding vs. Closure Context Lookup</title><description>&lt;p&gt;Binding is an extremely useful tool in a Javascript programmer's tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the abstraction of complexity that bind gives us programmers. In this&lt;/p&gt;</description><link>http://localhost:2368/binding-vs-closure-context-lookup/</link><guid isPermaLink="false">b1f45bd1-0c58-4296-b466-418bbfab7df4</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Tue, 20 Sep 2016 07:09:11 GMT</pubDate><content:encoded>&lt;p&gt;Binding is an extremely useful tool in a Javascript programmer's tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the abstraction of complexity that bind gives us programmers. In this post I wanted to explain fundamentally what bind does under the hood, why it's useful and some reasons you might want to use another pattern called context lookup.&lt;/p&gt;
+
+&lt;p&gt;First let's define the two patterns at play. They are very similar and usually have the same end result, but not always! Both are used to retain access to the context reference that is held, when we want to declare a function that will not be invoked immediately but passed on to another part of our program. This function is defined in the scope we are working in, but when it is invoked it will not be executing in the same scope. If we want to have valid reference and operate on an object in the scope where we originally defined the function, we have a little work to do! Below is an example of three scenarios. One where we don't save a context reference, another where we use a closure to access the correct &lt;code&gt;this&lt;/code&gt;, and finally an example of bind. &lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;//A function which will be shared by a couple different modules
+var getter = function() { return this.val };  
+//A global variable
+val = 'fizz';
+
+var module = {  
+  fooMod: {
+    val: 'foo',
+    get: getter
+  },
+  barMod: {
+    val: 'bar',
+    get: getter
+  }
+};
+
+module.fooMod.get(); // ----&amp;gt; foo
+
+//Simply assigning the function a new variable name and invoking it 
+//elsewhere returns 'fizz', because the function is invoked in global scope
+var getFoo = module.fooMod.get;  
+getFoo(); // ----&amp;gt; fizz
+
+//The closure pattern will return 'foo' wherever the resulting function is invoked, due to execution contexts
+var closedFooGet = function() {  
+  return module.fooMod.get();
+};
+closedFooGet(); // ----&amp;gt; foo
+
+//Binding also returns 'foo' no matter where the resulting function is invoked
+var boundFooGet = module.fooMod.get.bind(module.fooMod);  
+boundFooGet(); // ----&amp;gt; foo
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In the first case, the function doesn't have reference to the object we want to operate on! The variable &lt;code&gt;this&lt;/code&gt; will refer to global scope. The second pattern using closure works, if you need a refresher on how a closure works, check out my &lt;a href="https://oldchevy.github.io/closures-anonymous-functions-and-you/"&gt;previous post&lt;/a&gt;. This pattern is considered to be sloppy by many, especially if you decide to be lazy with your variable naming (Pro tip: don't use  &lt;code&gt;var that = this&lt;/code&gt; or you will end up very confused). Binding looks significantly cleaner  and gives the same end result. Or so it seems...&lt;/p&gt;
+
+&lt;p&gt;Let's take a look at a simplified version of bind that reveals the behavior we will examine today.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;Function.prototype.bind = function(context) {  
+  var func = this;
+  return function() {
+    return func.apply(context, arguments);
+  };
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The thing I want to bring your attention to is the key feature of bind. Bind saves a variable reference to &lt;code&gt;this&lt;/code&gt;, the function to the left of the call-time dot on which bind is being invoked, and then the returned bound function references the original function by way of a closure. The apply method invokes that saved reference with the context we've passed in originally to bind. So bind also uses the closure pattern, how the heck is it any different from just using the first pattern shown in the example?? Using the simple bind definition above, can you walk through the behavior of the next example utilizing the same modules as before?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;var getter = function() { return this.val; };  
+val = 'fizz';
+
+var module = {  
+  fooMod: {
+    val: 'foo',
+    get: getter
+  },
+  barMod: {
+    val: 'bar',
+    get: getter
+  }
+};
+
+var closedFooGet = function() {  
+  return module.fooMod.get();
+};
+closedFooGet(); // ----&amp;gt; foo
+
+var boundFooGet = module.fooMod.get.bind(module.fooMod);  
+boundFooGet(); // ----&amp;gt; foo
+
+module.fooMod = module.barMod;
+
+boundFooGet();  
+closedFooGet();  
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you try to run this snippet you will find that while the closed function now returns &lt;code&gt;'bar'&lt;/code&gt;, the bound function still returns &lt;code&gt;'foo'&lt;/code&gt;. The reason for this is that during execution a closure pattern will always look up the variables value at run time, which by the time the closed function is invoked for the second time has been updated to point to the same object as &lt;code&gt;barMod&lt;/code&gt;. However, the bound function saved it's context reference when bind was invoked. Reassigning &lt;code&gt;fooMod&lt;/code&gt; later on does not affect what object the bound function points to. That's all there is to it. &lt;/p&gt;
+
+&lt;p&gt;You usually want to retain access to the original object and not ever worry that it might be reassigned, and bind is great for this reason. Sometimes though you actually do want maintain a reassigned reference, one important use case is when developing tests and substituting a method in the innards of your codebase with a mock, stub, or a spy. In these cases if your code implements bind on the substituted method the testing assertions may not behave as you expect them to! It would be easier to use a context lookup and know for certain your method has been reassigned at invocation.&lt;/p&gt;
+
+&lt;h5 id="extracredit"&gt;Extra Credit&lt;/h5&gt;
+
+&lt;p&gt;Below is the polyfill for bind, taken straight from the Mozilla Developer Network post on &lt;a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind"&gt;binding in Javascript&lt;/a&gt;. When trying to learn a new concept soundly or close conceptual gaps, I've found that checking out an official polyfill definition is a great way to check out what's going on and orient the concept around a professional-grade code snippet.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class="language-javascript"&gt;if (!Function.prototype.bind) {  
+  Function.prototype.bind = function(oThis) {
+    if (typeof this !== 'function') {
+      // closest thing possible to the ECMAScript 5
+      // internal IsCallable function
+      throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
+    }
+
+    var aArgs   = Array.prototype.slice.call(arguments, 1),
+        fToBind = this,
+        fNOP    = function() {},
+        fBound  = function() {
+          return fToBind.apply(this instanceof fNOP
+                 ? this
+                 : oThis,
+                 aArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+
+    if (this.prototype) {
+      // Function.prototype doesn't have a prototype property
+      fNOP.prototype = this.prototype; 
+    }
+    fBound.prototype = new fNOP();
+
+    return fBound;
+  };
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There is a lot to unpack here in these few lines, such as type checking to make sure the object being bound is indeed a function, making sure the prototype chain stays intact, and using &lt;code&gt;aArgs&lt;/code&gt; to give bind it's useful argument currying behavior (not the topic of this post, but check out this article about &lt;a href="https://www.sitepoint.com/currying-in-functional-javascript/"&gt;function currying&lt;/a&gt;). Take a moment to digest this code and look up the reasons for lines that confuse you, it will be worthwhile, as bind is useful and frequently used!&lt;/p&gt;
+
+&lt;p&gt;Side note: In the polyfill definition, &lt;code&gt;instanceof&lt;/code&gt; checks to see whether the object on the left has the constructor's prototype property anywhere in it's prototype chain. For a normally declared function, the &lt;code&gt;instanceof&lt;/code&gt; check is always going to evaluate to false, so we won't consider the other case here. After perusing Stack Overflow and brainstorming I can't quite think of a scenario where that case would come into play, if you know please drop me a line! When I find out I'll give an update.&lt;/p&gt;</content:encoded></item><item><title>Understanding Closures with Anonymous Functions</title><description>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous&lt;/p&gt;</description><link>http://localhost:2368/closures-anonymous-functions-and-you/</link><guid isPermaLink="false">af07cd75-191e-44b9-976c-cc91e98a0106</guid><dc:creator>Nick Olszowy</dc:creator><pubDate>Mon, 15 Aug 2016 05:46:14 GMT</pubDate><content:encoded>&lt;p&gt;Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly. Using anonymous functions as callbacks in higher-order functions is a breeze and is extremely useful, however if you don't know what a Javascript interpreter is doing under the hood an anonymous function accessing a closure variable can seem like black magic! Today I want to demystify the process and hopefully leave you with a solid understanding of making a closure with an anonymous function. First, a little context is necessary.&lt;/p&gt;
 
 &lt;p&gt;A closure is when a function is declared within another function, and the inner function has access to the variables of the outer function, even when the outer function has already returned! Check out &lt;a href="http://javascriptissexy.com/understand-javascript-closures-with-ease/"&gt;this article&lt;/a&gt; for a more in-depth description. As an example, consider a scenario where we want to delay an action using &lt;code&gt;setTimout&lt;/code&gt;. This timing function is provided by default in Javascript, and is stored in the global scope. With it we can pass a function to be invoked at a later time, and a time in milliseconds for the delay.&lt;/p&gt;
 

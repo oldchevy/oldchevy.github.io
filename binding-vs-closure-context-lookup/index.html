@@ -1,0 +1,274 @@
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Binding vs. Closure Context Lookup</title>
+    <meta name="description" content="">
+
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="shortcut icon" href="../favicon.ico">
+
+    <link rel="stylesheet" type="text/css" href="../assets/css/screen.css?v=09eda9dddf">
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic%7COpen+Sans:700,400">
+
+    <link rel="canonical" href="index.html">
+    <meta name="referrer" content="origin">
+    
+    <meta property="og:site_name" content="Bits of Bytes">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Binding vs. Closure Context Lookup">
+    <meta property="og:description" content="Binding is an extremely useful tool in a Javascript programmer's tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the...">
+    <meta property="og:url" content="http://localhost:2368/binding-vs-closure-context-lookup/">
+    <meta property="article:published_time" content="2016-09-20T07:09:11.732Z">
+    <meta property="article:modified_time" content="2016-09-20T07:10:29.372Z">
+    
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Binding vs. Closure Context Lookup">
+    <meta name="twitter:description" content="Binding is an extremely useful tool in a Javascript programmer's tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the...">
+    <meta name="twitter:url" content="http://localhost:2368/binding-vs-closure-context-lookup/">
+    <link rel="stylesheet" type="text/css" href="../assets/css/prism.css">
+    <script type="text/javascript" src="../assets/js/prism.js"></script>
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Article",
+    "publisher": "Bits of Bytes",
+    "author": {
+        "@type": "Person",
+        "name": "Nick Olszowy",
+        "url": "http://localhost:2368/author/nick",
+        "sameAs": null,
+        "description": null
+    },
+    "headline": "Binding vs. Closure Context Lookup",
+    "url": "http://localhost:2368/binding-vs-closure-context-lookup/",
+    "datePublished": "2016-09-20T07:09:11.732Z",
+    "dateModified": "2016-09-20T07:10:29.372Z",
+    "description": "Binding is an extremely useful tool in a Javascript programmer&#x27;s tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the..."
+}
+    </script>
+
+    <meta name="generator" content="Ghost 0.7">
+    <link rel="alternate" type="application/rss+xml" title="Bits of Bytes" href="../rss/index.html">
+</head>
+<body class="post-template nav-closed">
+
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="index.html#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+            <li class="nav-home" role="presentation"><a href="../">Home</a></li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="../rss/index.rss">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        
+
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+            <a class="menu-button icon-menu" href="index.html#"><span class="word">Menu</span></a>
+    </nav>
+</header>
+
+<main class="content" role="main">
+    <article class="post">
+
+        <header class="post-header">
+            <h1 class="post-title">Binding vs. Closure Context Lookup</h1>
+            <section class="post-meta">
+                <time class="post-date" datetime="2016-09-20">20 September 2016</time> 
+            </section>
+        </header>
+
+        <section class="post-content">
+            <p>Binding is an extremely useful tool in a Javascript programmer's tool belt. It is used frequently on all parts of the stack. Front-end frameworks, server-side techniques, and Database Management System ORM interfaces like Sequelize or Mongoose all benefit from the abstraction of complexity that bind gives us programmers. In this post I wanted to explain fundamentally what bind does under the hood, why it's useful and some reasons you might want to use another pattern called context lookup.</p>
+
+<p>First let's define the two patterns at play. They are very similar and usually have the same end result, but not always! Both are used to retain access to the context reference that is held, when we want to declare a function that will not be invoked immediately but passed on to another part of our program. This function is defined in the scope we are working in, but when it is invoked it will not be executing in the same scope. If we want to have valid reference and operate on an object in the scope where we originally defined the function, we have a little work to do! Below is an example of three scenarios. One where we don't save a context reference, another where we use a closure to access the correct <code>this</code>, and finally an example of bind. </p>
+
+<pre><code class="language-javascript">//A function which will be shared by a couple different modules
+var getter = function() { return this.val };  
+//A global variable
+val = 'fizz';
+
+var module = {  
+  fooMod: {
+    val: 'foo',
+    get: getter
+  },
+  barMod: {
+    val: 'bar',
+    get: getter
+  }
+};
+
+module.fooMod.get(); // ----&gt; foo
+
+//Simply assigning the function a new variable name and invoking it 
+//elsewhere returns 'fizz', because the function is invoked in global scope
+var getFoo = module.fooMod.get;  
+getFoo(); // ----&gt; fizz
+
+//The closure pattern will return 'foo' wherever the resulting function is invoked, due to execution contexts
+var closedFooGet = function() {  
+  return module.fooMod.get();
+};
+closedFooGet(); // ----&gt; foo
+
+//Binding also returns 'foo' no matter where the resulting function is invoked
+var boundFooGet = module.fooMod.get.bind(module.fooMod);  
+boundFooGet(); // ----&gt; foo
+</code></pre>
+
+<p>In the first case, the function doesn't have reference to the object we want to operate on! The variable <code>this</code> will refer to global scope. The second pattern using closure works, if you need a refresher on how a closure works, check out my <a href="https://oldchevy.github.io/closures-anonymous-functions-and-you/">previous post</a>. This pattern is considered to be sloppy by many, especially if you decide to be lazy with your variable naming (Pro tip: don't use  <code>var that = this</code> or you will end up very confused). Binding looks significantly cleaner  and gives the same end result. Or so it seems...</p>
+
+<p>Let's take a look at a simplified version of bind that reveals the behavior we will examine today.</p>
+
+<pre><code class="language-javascript">Function.prototype.bind = function(context) {  
+  var func = this;
+  return function() {
+    return func.apply(context, arguments);
+  };
+};
+</code></pre>
+
+<p>The thing I want to bring your attention to is the key feature of bind. Bind saves a variable reference to <code>this</code>, the function to the left of the call-time dot on which bind is being invoked, and then the returned bound function references the original function by way of a closure. The apply method invokes that saved reference with the context we've passed in originally to bind. So bind also uses the closure pattern, how the heck is it any different from just using the first pattern shown in the example?? Using the simple bind definition above, can you walk through the behavior of the next example utilizing the same modules as before?</p>
+
+<pre><code class="language-javascript">var getter = function() { return this.val; };  
+val = 'fizz';
+
+var module = {  
+  fooMod: {
+    val: 'foo',
+    get: getter
+  },
+  barMod: {
+    val: 'bar',
+    get: getter
+  }
+};
+
+var closedFooGet = function() {  
+  return module.fooMod.get();
+};
+closedFooGet(); // ----&gt; foo
+
+var boundFooGet = module.fooMod.get.bind(module.fooMod);  
+boundFooGet(); // ----&gt; foo
+
+module.fooMod = module.barMod;
+
+boundFooGet();  
+closedFooGet();  
+</code></pre>
+
+<p>If you try to run this snippet you will find that while the closed function now returns <code>'bar'</code>, the bound function still returns <code>'foo'</code>. The reason for this is that during execution a closure pattern will always look up the variables value at run time, which by the time the closed function is invoked for the second time has been updated to point to the same object as <code>barMod</code>. However, the bound function saved it's context reference when bind was invoked. Reassigning <code>fooMod</code> later on does not affect what object the bound function points to. That's all there is to it. </p>
+
+<p>You usually want to retain access to the original object and not ever worry that it might be reassigned, and bind is great for this reason. Sometimes though you actually do want maintain a reassigned reference, one important use case is when developing tests and substituting a method in the innards of your codebase with a mock, stub, or a spy. In these cases if your code implements bind on the substituted method the testing assertions may not behave as you expect them to! It would be easier to use a context lookup and know for certain your method has been reassigned at invocation.</p>
+
+<h5 id="extracredit">Extra Credit</h5>
+
+<p>Below is the polyfill for bind, taken straight from the Mozilla Developer Network post on <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind">binding in Javascript</a>. When trying to learn a new concept soundly or close conceptual gaps, I've found that checking out an official polyfill definition is a great way to check out what's going on and orient the concept around a professional-grade code snippet.</p>
+
+<pre><code class="language-javascript">if (!Function.prototype.bind) {  
+  Function.prototype.bind = function(oThis) {
+    if (typeof this !== 'function') {
+      // closest thing possible to the ECMAScript 5
+      // internal IsCallable function
+      throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
+    }
+
+    var aArgs   = Array.prototype.slice.call(arguments, 1),
+        fToBind = this,
+        fNOP    = function() {},
+        fBound  = function() {
+          return fToBind.apply(this instanceof fNOP
+                 ? this
+                 : oThis,
+                 aArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+
+    if (this.prototype) {
+      // Function.prototype doesn't have a prototype property
+      fNOP.prototype = this.prototype; 
+    }
+    fBound.prototype = new fNOP();
+
+    return fBound;
+  };
+}
+</code></pre>
+
+<p>There is a lot to unpack here in these few lines, such as type checking to make sure the object being bound is indeed a function, making sure the prototype chain stays intact, and using <code>aArgs</code> to give bind it's useful argument currying behavior (not the topic of this post, but check out this article about <a href="https://www.sitepoint.com/currying-in-functional-javascript/">function currying</a>). Take a moment to digest this code and look up the reasons for lines that confuse you, it will be worthwhile, as bind is useful and frequently used!</p>
+
+<p>Side note: In the polyfill definition, <code>instanceof</code> checks to see whether the object on the left has the constructor's prototype property anywhere in it's prototype chain. For a normally declared function, the <code>instanceof</code> check is always going to evaluate to false, so we won't consider the other case here. After perusing Stack Overflow and brainstorming I can't quite think of a scenario where that case would come into play, if you know please drop me a line! When I find out I'll give an update.</p>
+        </section>
+
+        <footer class="post-footer">
+
+
+
+            <section class="author">
+                <h4><a href="../author/nick/">Nick Olszowy</a></h4>
+
+                    <p>Read <a href="../author/nick/">more posts</a> by this author.</p>
+                <div class="author-meta">
+                    
+                    
+                </div>
+            </section>
+
+
+            <section class="share">
+                <h4>Share this post</h4>
+                <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Binding%20vs.%20Closure%20Context%20Lookup&amp;url=http://localhost:2368/binding-vs-closure-context-lookup/" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                    <span class="hidden">Twitter</span>
+                </a>
+                <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http://localhost:2368/binding-vs-closure-context-lookup/" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                    <span class="hidden">Facebook</span>
+                </a>
+                <a class="icon-google-plus" href="https://plus.google.com/share?url=http://localhost:2368/binding-vs-closure-context-lookup/" onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                    <span class="hidden">Google+</span>
+                </a>
+            </section>
+
+        </footer>
+
+    </article>
+</main>
+
+<aside class="read-next">
+    <a class="read-next-story prev no-cover" href="../closures-anonymous-functions-and-you/">
+        <section class="post">
+            <h2>Understanding Closures with Anonymous Functions</h2>
+            <p>Closure is a pattern used in Javascript over and over again, so it's an important topic to understand thoroughly.…</p>
+        </section>
+    </a>
+</aside>
+
+
+
+        <footer class="site-footer clearfix">
+            <section class="copyright"><a href="../">Bits of Bytes</a> © 2016</section>
+            <section class="poweredby">Proudly published with <a href="https://ghost.org">Ghost</a></section>
+        </footer>
+
+    </div>
+
+    
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="../assets/js/jquery.fitvids.js?v=09eda9dddf"></script>
+    <script type="text/javascript" src="../assets/js/index.js?v=09eda9dddf"></script>
+
+</body>
